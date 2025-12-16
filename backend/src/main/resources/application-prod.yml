@@ -1,0 +1,18 @@
+spring:
+  datasource:
+    url: ${POSTGRES_PROD_URL}
+    username: ${POSTGRES_USERNAME}
+    password: ${POSTGRES_PASSWORD}
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+    open-in-view: false
+
+  jackson:
+    time-zone: UTC
