@@ -1,0 +1,87 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* Wine bar theme with warm amber accents and deep charcoal backgrounds */
+  --background: 0.12 0.01 285;
+  --foreground: 0.95 0.01 75;
+  --primary: 0.72 0.15 55;
+  --secondary: 0.22 0.01 285;
+  --accent: 0.72 0.15 55;
+  --border: 0.25 0.01 285;
+  --ring: 0.72 0.15 55;
+}
+
+@layer base {
+  body {
+    @apply bg-gray-950;
+    color: #E8DCC0;
+    position: relative;
+    overflow-x: hidden;
+    font-family: 'Noto Serif KR', serif;
+  }
+
+  /* Wine bar interior background */
+  body::before {
+    content: "";
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-image: url("/wine-bar-interior-dark.jpg");
+    background-size: cover;
+    background-position: center;
+    background-attachment: fixed;
+    filter: blur(1px) brightness(0.5);
+    z-index: -2;
+  }
+
+  /* Warm amber lighting overlay */
+  body::after {
+    content: "";
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: radial-gradient(ellipse at top, rgba(234, 145, 78, 0.12) 0%, transparent 50%),
+      radial-gradient(ellipse at 20% 80%, rgba(234, 145, 78, 0.08) 0%, transparent 40%),
+      radial-gradient(ellipse at 80% 60%, rgba(234, 145, 78, 0.06) 0%, transparent 35%),
+      linear-gradient(180deg, rgba(15, 15, 20, 0.5) 0%, rgba(10, 10, 15, 0.7) 100%);
+    z-index: -1;
+  }
+}
+
+/* Custom glow effects for wine bar atmosphere */
+@layer utilities {
+  .glow-amber {
+    box-shadow: 0 0 20px rgba(234, 145, 78, 0.3), 0 0 40px rgba(234, 145, 78, 0.1);
+  }
+
+  .glow-amber-sm {
+    box-shadow: 0 0 10px rgba(234, 145, 78, 0.2);
+  }
+
+  .glass-panel {
+    background: rgba(15, 15, 20, 0.4);
+    backdrop-filter: blur(12px) saturate(150%);
+    border: 1px solid rgba(234, 145, 78, 0.1);
+  }
+
+  .glass-card {
+    background: rgba(20, 20, 25, 0.85);
+    backdrop-filter: blur(10px) saturate(140%);
+    border: 1px solid rgba(234, 145, 78, 0.1);
+  }
+
+  .hero-text {
+    text-shadow: 0 2px 30px rgba(0, 0, 0, 0.8), 0 0 60px rgba(234, 145, 78, 0.15), 0 4px 20px rgba(0, 0, 0, 0.6);
+  }
+
+  .content-container {
+    position: relative;
+    z-index: 1;
+  }
+}

@@ -31,15 +31,24 @@
 
 ## 🧩 주요 기능
 
-### Frontend
+### Frontend (현재 구현 완료)
 
-* 술 목록 및 상세 페이지
+* ✅ **온보딩 페이지**: 서비스 소개 및 핵심 기능 안내
+* ✅ **헤더 네비게이션**: 로고, 검색바, 메시지, 프로필, 로그인
+* ✅ **술 목록 그리드**: 카테고리 필터 및 카드 레이아웃
+* ✅ **술 카드 컴포넌트**: 이미지, 평점, 리뷰 수, 태그 표시
+* ✅ **커스텀 라우터**: Context API 기반 SPA 라우팅
+* ✅ **다크 와인바 테마**: 글래스모피즘 및 부드러운 인터랙션
+* ✅ **Noto Serif KR 폰트**: 세련된 한글 서체 적용
+
+### Frontend (예정)
+
+* 술 상세 페이지
 * 별점 및 리뷰 작성 UI
 * 댓글 기반 대화 흐름
 * 커뮤니티 게시판 UI
-* 실시간 채팅 UI 설계
+* 실시간 채팅 UI
 * 이미지 및 동영상 업로드 UI
-* 다크 와인바 컨셉의 몰입형 배경 및 레이어링
 
 ---
 
@@ -58,49 +67,58 @@
 
 ### Frontend
 
-* React
-* TypeScript
+* React 19
+* TypeScript (strict mode)
+* Vite
 * Tailwind CSS
+* Lucide React (아이콘)
 
 ### 상태 및 데이터 관리
 
+* Context API (커스텀 라우터)
 * React Query (예정)
 * Zustand (예정)
 
-### 구조 및 기타
+### 구조 및 설계
 
 * Feature-based folder structure
 * Barrel pattern (`index.ts`) 기반 export 관리
+* Inline styles로 CSS 충돌 방지
+* 타입 안전성 강화 (type-only imports)
 * 반응형 UI 고려
 
 ---
 
-## 📁 프로젝트 구조 (예시)
+## 📁 프로젝트 구조
 
 ```bash
-janchwi/
-├─ frontend/        # React + TypeScript + Tailwind
-│  └─ src/
-│     ├─ features/
-│     │  ├─ alcohol/
-│     │  ├─ review/
-│     │  ├─ comment/
-│     │  ├─ chat/
-│     │  └─ board/
-│     ├─ shared/
-│     │  ├─ ui/
-│     │  ├─ hooks/
-│     │  ├─ types/
-│     │  └─ utils/
-│     ├─ pages/
-│     └─ app/
+janchwi-web/
+├─ frontend/              # React + TypeScript + Vite
+│  ├─ src/
+│  │  ├─ features/        # 기능별 모듈
+│  │  │  └─ alcohol/      # 술 관련 기능
+│  │  │     ├─ components/ # AlcoholCard, AlcoholGrid
+│  │  │     └─ types/      # 타입 정의
+│  │  ├─ pages/           # 페이지 컴포넌트
+│  │  │  ├─ Home.tsx      # 메인 페이지
+│  │  │  └─ Onboarding.tsx # 온보딩 페이지
+│  │  ├─ router/          # 커스텀 라우팅 시스템
+│  │  │  ├─ Router.tsx
+│  │  │  ├─ RouterContext.tsx
+│  │  │  └─ useRouter.ts
+│  │  ├─ shared/          # 공유 리소스
+│  │  │  ├─ components/   # Header 등 공통 컴포넌트
+│  │  │  ├─ ui/           # Button, Badge, Card 등
+│  │  │  └─ utils/        # 유틸리티 함수
+│  │  └─ styles/          # 전역 스타일
+│  │     └─ globals.css   # Tailwind + 커스텀 스타일
+│  └─ public/             # 정적 파일 (이미지, 폰트 등)
 │
-├─ backend/         # API / Auth / Realtime (예정)
-└─ infra/           # Docker / CI / IaC (예정)
+├─ backend/               # API / Auth / Realtime (예정)
+└─ infra/                 # Docker / CI / IaC (예정)
 ```
 
-> 기능 단위로 분리하여
-> **확장성과 유지보수성을 고려한 구조**를 목표로 합니다.
+> 기능 단위로 분리하여 **확장성과 유지보수성을 고려한 구조**를 목표로 합니다.
 
 ---
 
@@ -227,11 +245,19 @@ fix: bug
 
 ## 🚀 향후 계획
 
-* 백엔드 API 연동 (인증, 리뷰, 댓글)
-* WebSocket 기반 실시간 채팅 기능 구현
-* 이미지 및 영상 업로드 기능 연동
-* UI 일관성 및 다크 테마 고도화
-* 서비스 소개 및 About 페이지 추가
+### Frontend
+* 술 상세 페이지 구현
+* 리뷰 작성 및 평점 시스템
+* 댓글 및 대화 기능
+* 커뮤니티 게시판
+* 실시간 채팅 UI
+* 이미지/영상 업로드 UI
+
+### Backend & Infra
+* 백엔드 API 개발 (인증, 리뷰, 댓글)
+* WebSocket 기반 실시간 채팅
+* 데이터베이스 설계 및 구축
+* 배포 인프라 구성
 
 ---
 
