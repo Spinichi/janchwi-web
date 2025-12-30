@@ -20,6 +20,22 @@ HTTPS 기반으로 운영되도록 설계되었습니다.
 * Gradle (Groovy DSL)
 * Spring Web (REST API)
 * Spring Data JPA (Hibernate)
+* Spring Security 7.0.1
+* Spring Validation
+
+### Authentication & Security
+
+* **JWT (JSON Web Token)** - JJWT 0.12.6
+* Access Token (15분) + Refresh Token (7일) 방식
+* HttpOnly Cookie 기반 Refresh Token 저장
+* SHA-256 토큰 해싱
+* BCrypt 비밀번호 암호화
+
+### Email
+
+* **Spring Mail (SMTP)**
+* 이메일 인증 코드 발송 (6자리 숫자)
+* 15분 만료 시간, 5회 시도 제한
 
 ### Database
 
@@ -27,11 +43,16 @@ HTTPS 기반으로 운영되도록 설계되었습니다.
 * JPA / Hibernate 기반 ORM
 * Docker 기반 DB 운영
 
+### API Documentation
+
+* **SpringDoc OpenAPI 3** (Swagger UI 2.7.0)
+* http://localhost:8080/swagger-ui/index.html
+
 ### Infra / Ops
 
 * Docker / Docker Compose
 * Nginx (Reverse Proxy)
-* Let’s Encrypt (HTTPS)
+* Let's Encrypt (HTTPS)
 * AWS EC2 (Ubuntu)
 
 ### Observability / Management
@@ -46,13 +67,46 @@ HTTPS 기반으로 운영되도록 설계되었습니다.
 
 ---
 
-## 🎯 주요 역할
+## 🎯 주요 기능
 
-* 사용자 인증 및 권한 관리 (JWT 기반 예정)
+### ✅ 구현 완료
+
+#### 인증/인가 시스템
+* **회원가입** (`POST /v1/auth/signup`)
+  - 이메일 중복 체크
+  - 닉네임 중복 체크
+  - 만 19세 이상 검증
+  - BCrypt 비밀번호 암호화
+  - JWT 토큰 자동 발급
+
+* **로그인** (`POST /v1/auth/login`)
+  - 이메일/비밀번호 인증
+  - 계정 잠금 (5회 실패 시 30분)
+  - 이메일 미인증 사용자 차단
+  - Access Token + Refresh Token 발급
+
+* **이메일 인증**
+  - 인증 코드 발송 (`POST /v1/auth/send-verification`)
+  - 인증 코드 검증 (`POST /v1/auth/verify-email`)
+  - 6자리 숫자 코드, 15분 만료
+  - 5회 시도 제한
+
+* **토큰 관리**
+  - Access Token 재발급 (`POST /v1/auth/refresh`)
+  - 로그아웃 (`POST /v1/auth/logout`)
+  - Refresh Token 해시 저장 (보안 강화)
+
+* **보안 필터**
+  - JWT 인증 필터 (JwtAuthenticationFilter)
+  - Spring Security 통합
+  - 비인증 엔드포인트 화이트리스트
+
+### 🔜 예정
+
 * 술 정보, 리뷰, 댓글, 게시글 API 제공
 * 사용자 활동 기록 및 통계 처리
 * 이미지 / 영상 업로드 연동을 위한 API 제공
-* (예정) 비동기 이벤트 처리 및 알림 시스템
+* 비동기 이벤트 처리 및 알림 시스템
 
 ---
 
@@ -63,10 +117,15 @@ HTTPS 기반으로 운영되도록 설계되었습니다.
 
   ```
   domain
-   ├─ user
-   ├─ drink
-   ├─ review
-   └─ common
+   ├─ auth         (인증/인가)
+   ├─ users        (사용자)
+   ├─ refreshtokens (리프레시 토큰)
+   └─ (예정) drink, review, comment
+  global
+   ├─ config       (설정)
+   ├─ exception    (예외 처리)
+   ├─ util         (유틸리티)
+   └─ security     (보안)
   ```
 * 비즈니스 로직과 인프라 계층 분리
 * 컨트롤러 → 서비스 → 도메인 모델 중심 구조
@@ -77,16 +136,35 @@ HTTPS 기반으로 운영되도록 설계되었습니다.
 
 ## 🗄 데이터베이스
 
-* **PostgreSQL 기반 RDB 설계**
-* 관계 중심 모델링
+### 엔티티 설계
 
-    * 사용자
-    * 술
-    * 리뷰
-    * 댓글
-    * (예정) 알림, 이벤트 로그
-* 시간 컬럼은 **`Instant` / `OffsetDateTime` 기준으로 통일**
-* 운영 DB는 서버 내 Docker 컨테이너로 독립 관리
+#### User 테이블
+* **타입 안정성 강화**
+  - `id`: `Long` (Integer 대신 사용, ~9경 사용자 지원)
+  - `gender`: `Gender` Enum (MALE, FEMALE, OTHER)
+  - `isEmailVerified`, `isActive`: `boolean` primitive (null 불가)
+  - `password`: `VARCHAR(60)` (BCrypt 해시 길이 최적화)
+
+* **보안 필드**
+  - `emailVerificationCodeHash`: SHA-256 해시
+  - `verificationAttempts`: 인증 시도 횟수 (최대 5회)
+  - `failedLoginAttempts`: 로그인 실패 횟수 (5회 시 잠금)
+  - `accountLockedUntil`: 계정 잠금 해제 시간
+
+* **제약 조건**
+  - 이메일 UNIQUE
+  - 닉네임 UNIQUE
+  - Gender CHECK 제약조건
+
+#### RefreshToken 테이블
+* `id`: `Long`
+* `user`: User 엔티티 참조 (FK)
+* `tokenHash`: SHA-256 해시 (UNIQUE)
+* `expiresAt`: 만료 시간
+
+### 시간 처리
+* 모든 시간 필드: **`Instant` 기준 (UTC)**
+* `created_at`, `updated_at`: BaseEntity 자동 관리
 
 ---
 
@@ -120,6 +198,30 @@ spring:
     default: dev
 ```
 
+### 주요 환경 변수
+
+```properties
+# Database
+POSTGRES_HOST=127.0.0.1
+POSTGRES_PORT=15432
+POSTGRES_DB=janchwi
+POSTGRES_USER=janchwi
+POSTGRES_PASSWORD=your_password
+
+# JWT
+JWT_SECRET=your-secret-key-min-256-bits
+JWT_ACCESS_TOKEN_EXPIRY=900000      # 15분
+JWT_REFRESH_TOKEN_EXPIRY=604800000  # 7일
+
+# Email (SMTP)
+MAIL_HOST=smtp.gmail.com
+MAIL_PORT=587
+MAIL_USERNAME=your-email@gmail.com
+MAIL_PASSWORD=your-app-password
+```
+
+---
+
 ## 🧪 로컬 개발 환경
 
 ### 1️⃣ PostgreSQL 연결
@@ -137,6 +239,16 @@ spring:
 * Active Profile: `dev`
 * Working Directory: `backend`
 
+### 3️⃣ 테스트 실행
+
+```bash
+./gradlew test
+```
+
+* **26개 Unit Test 통과** ✅
+* Mockito 기반 서비스 레이어 테스트
+* 로그인, 회원가입, 이메일 인증, 토큰 관리 등 전체 검증
+
 ---
 
 ## 🚀 실행 확인
@@ -146,18 +258,66 @@ spring:
 * PostgreSQL JDBC URL 인식
 * Hibernate Dialect 자동 설정
 * Tomcat 11 (8080) 포트 기동
+* Swagger UI 초기화
 
 ```text
 Started JanchwiBackendApplication in X.XXX seconds
 ```
 
+### API 문서 확인
+
+http://localhost:8080/swagger-ui/index.html
+
 ---
 
-## 🔒 보안 관련 참고
+## 🔒 보안
 
-* 현재 개발 단계에서는 Spring Security 기본 설정 사용
-* 기본 인증 해제 및 JWT 기반 인증은 추후 적용 예정
-* 운영 환경에서는 반드시 보안 설정을 강화해야 합니다.
+### 인증 흐름
+
+1. **회원가입/로그인**
+   - Access Token (Header: `Authorization: Bearer {token}`)
+   - Refresh Token (HttpOnly Cookie)
+
+2. **API 요청**
+   - Access Token으로 인증
+   - JWT 필터에서 자동 검증
+
+3. **토큰 만료**
+   - Access Token 만료 시 Refresh Token으로 재발급
+   - Refresh Token 만료 시 재로그인 필요
+
+### 보안 정책
+
+* 비밀번호: BCrypt 암호화 (strength 10)
+* 토큰: SHA-256 해싱 저장
+* 계정 잠금: 5회 실패 시 30분
+* 이메일 인증: 5회 시도 제한
+* CORS: 프론트엔드 도메인만 허용
+
+---
+
+## 📊 타입 안정성 개선 이력
+
+### 2025-12-31 업데이트
+
+1. **ID 타입 마이그레이션** (Integer → Long)
+   - User, RefreshToken 엔티티
+   - 모든 DTO, Service, Controller
+   - JwtTokenProvider
+   - 최대 사용자 수: 21억 → 9경
+
+2. **Gender Enum 도입**
+   - String → Gender Enum (MALE, FEMALE, OTHER)
+   - DB CHECK 제약조건 자동 생성
+   - 타입 안정성 보장
+
+3. **Boolean 타입 최적화**
+   - Boolean wrapper → boolean primitive
+   - null 불가능, 3-state 문제 해결
+
+4. **Password 컬럼 최적화**
+   - VARCHAR(255) → VARCHAR(60)
+   - BCrypt 해시 길이 정확히 일치
 
 ---
 
@@ -166,13 +326,14 @@ Started JanchwiBackendApplication in X.XXX seconds
 * Backend Dockerfile 작성
 * Backend 전용 docker-compose 구성
 * Nginx ↔ Backend API 연동
-* JWT 인증/인가 구현
-* Redis 연동
+* Redis 연동 (Refresh Token 저장소)
 * 비동기 이벤트 처리 구조 설계
+* Integration Test 추가
+* 소셜 로그인 (Google, Kakao)
 
 ---
 
 ## 📌 한 줄 요약
 
-> **잔취 백엔드는 PostgreSQL 기반의 Spring Boot 애플리케이션으로,
-> 로컬·운영 환경 분리를 완료하고 실제 배포를 앞둔 상태입니다.**
+> **잔취 백엔드는 PostgreSQL + JWT 기반의 Spring Boot 애플리케이션으로,
+> 인증/인가 시스템을 완성하고 26개 테스트를 통과한 프로덕션 준비 상태입니다.**

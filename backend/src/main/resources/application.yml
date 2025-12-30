@@ -5,9 +5,47 @@ spring:
     import: optional:file:.env[.properties]
   profiles:
     default: dev
+  mail:   # Gmail SMTP Configuration
+    host: smtp.gmail.com
+    port: 587
+    username: ${GMAIL_USERNAME}
+    password: ${GMAIL_APP_PASSWORD}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            required: true
+          connectiontimeout: 5000
+          timeout: 5000
+          writetimeout: 5000
+
+  # Database
+  datasource:
+    url: ${POSTGRES_DEV_URL}
+    username: ${POSTGRES_USERNAME}
+    password: ${POSTGRES_PASSWORD}
+    driver-class-name: org.postgresql.Driver
+
+  # JPA
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.PostgreSQLDialect
 
 server:
   port: 8080
+
+# JWT
+jwt:
+  secret: ${JWT_SECRET}
+  access-token-expiry: 86400000   # 1일 (밀리초)
+  refresh-token-expiry: 604800000 # 7일 (밀리초)
 
 management:
   endpoints:
@@ -18,3 +56,4 @@ management:
 logging:
   level:
     root: INFO
+    site.janchwi: DEBUG
