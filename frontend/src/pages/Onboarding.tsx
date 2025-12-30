@@ -1,7 +1,7 @@
-import { useRouter } from '../router';
+import { useNavigate } from 'react-router-dom';
 
 export const Onboarding = () => {
-  const { navigate } = useRouter();
+  const navigate = useNavigate();
 
   return (
     <div style={{
@@ -117,7 +117,7 @@ export const Onboarding = () => {
               backdropFilter: 'blur(10px)'
             }}>
               <img
-                src="/janchwi-logo.png"
+                src="/janchwi-logo-NB.png"
                 alt="잔취"
                 style={{
                   width: '80%',

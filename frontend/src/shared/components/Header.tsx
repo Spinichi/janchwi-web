@@ -1,8 +1,8 @@
 import { Search, MessageCircle, User } from 'lucide-react';
-import { useRouter } from '../../router';
+import { useNavigate } from 'react-router-dom';
 
 export const Header = () => {
-  const { navigate } = useRouter();
+  const navigate = useNavigate();
 
   return (
     <header className="sticky top-0 left-0 w-full z-50" style={{
@@ -104,32 +104,35 @@ export const Header = () => {
           }}>
             <User style={{ height: '20px', width: '20px' }} />
           </button>
-          <button style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: '0 1.5rem',
-            height: '36px',
-            borderRadius: '0.5rem',
-            border: '1px solid rgba(180, 160, 134, 0.5)',
-            background: 'rgba(180, 160, 134, 0.3)',
-            backdropFilter: 'blur(10px)',
-            color: '#E8DCC0',
-            fontSize: '0.875rem',
-            fontWeight: '600',
-            cursor: 'pointer',
-            transition: 'all 0.3s',
-            lineHeight: '1',
-            fontFamily: "'Noto Serif KR', serif"
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.background = 'rgba(180, 160, 134, 0.5)';
-            e.currentTarget.style.borderColor = 'rgba(180, 160, 134, 0.8)';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.background = 'rgba(180, 160, 134, 0.3)';
-            e.currentTarget.style.borderColor = 'rgba(180, 160, 134, 0.5)';
-          }}>
+          <button
+            onClick={() => navigate('/login')}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '0 1.5rem',
+              height: '36px',
+              borderRadius: '0.5rem',
+              border: '1px solid rgba(180, 160, 134, 0.5)',
+              background: 'rgba(180, 160, 134, 0.3)',
+              backdropFilter: 'blur(10px)',
+              color: '#E8DCC0',
+              fontSize: '0.875rem',
+              fontWeight: '600',
+              cursor: 'pointer',
+              transition: 'all 0.3s',
+              lineHeight: '1',
+              fontFamily: "'Noto Serif KR', serif"
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = 'rgba(180, 160, 134, 0.5)';
+              e.currentTarget.style.borderColor = 'rgba(180, 160, 134, 0.8)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'rgba(180, 160, 134, 0.3)';
+              e.currentTarget.style.borderColor = 'rgba(180, 160, 134, 0.5)';
+            }}
+          >
             로그인
           </button>
         </div>
