@@ -171,6 +171,9 @@ public class AuthService {
         User savedUser = userRepository.save(user);
         log.info("회원가입 성공: userId={}, email={}", savedUser.getId(), request.getEmail());
 
+        // 이메일 인증 코드 발송
+        sendVerificationCode(savedUser.getEmail());
+
         // 토큰 생성 및 반환
         String accessToken = jwtTokenProvider.createAccessToken(savedUser.getId());
         String refreshToken = jwtTokenProvider.createRefreshToken(savedUser.getId());

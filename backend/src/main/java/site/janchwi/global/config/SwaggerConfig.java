@@ -46,10 +46,10 @@ public class SwaggerConfig {
                 )
                 .servers(List.of(
                         new Server()
-                                .url("http://localhost:8080")
+                                .url("http://localhost:8080/api")
                                 .description("로컬 개발 서버"),
                         new Server()
-                                .url("https://api.janchwi.site")
+                                .url("https://api.janchwi.site/api")
                                 .description("프로덕션 서버")
                 ))
                 .addSecurityItem(securityRequirement)
