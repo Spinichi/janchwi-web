@@ -78,7 +78,7 @@ export const apiClient = ky.create({
       },
     ],
     afterResponse: [
-      async (request, options, response) => {
+      async (request, _options, response) => {
         // 401 Unauthorized - Access Token 만료
         if (response.status === 401) {
           // 로그인/회원가입 요청은 토큰 갱신 시도하지 않음

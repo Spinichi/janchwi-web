@@ -1,4 +1,5 @@
-import { useState, useRef, useEffect, FormEvent, KeyboardEvent, ClipboardEvent } from 'react';
+import { useState, useRef, useEffect } from 'react';
+import type { FormEvent, KeyboardEvent, ClipboardEvent } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useMutation } from '@tanstack/react-query';
 import { verifyEmail, sendVerificationCode } from '../shared/api/authApi';
@@ -336,7 +337,9 @@ export const EmailVerification = () => {
               {code.map((digit, index) => (
                 <input
                   key={index}
-                  ref={(el) => (inputRefs.current[index] = el)}
+                  ref={(el) => {
+                    inputRefs.current[index] = el;
+                  }}
                   type="text"
                   inputMode="numeric"
                   maxLength={1}

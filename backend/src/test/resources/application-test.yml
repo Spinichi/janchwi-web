@@ -1,0 +1,30 @@
+spring:
+  datasource:
+    # TestContainers가 동적으로 설정
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        use_sql_comments: true
+  mail:
+    # 테스트에서는 실제 메일 발송 안함
+    host: localhost
+    port: 1025
+    username: test
+    password: test
+
+# JWT 테스트용
+jwt:
+  secret: test-secret-key-for-jwt-token-signing-must-be-at-least-256-bits-long
+  access-expiration: 3600000
+  refresh-expiration: 86400000
+
+logging:
+  level:
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
+    org.testcontainers: INFO
