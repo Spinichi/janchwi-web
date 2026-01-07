@@ -19,6 +19,7 @@ public class CorsConfig {
         configuration.setAllowedOrigins(List.of(
                 "https://janchwi.site",
                 "https://www.janchwi.site",
+                "https://janchwi.vercel.app", // Vercel 기본 도메인
                 "http://localhost:5173", // 개발 환경 (Vite)
                 "http://localhost:3000"  // 개발 환경 (React)
         ));

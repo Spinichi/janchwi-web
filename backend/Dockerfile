@@ -15,6 +15,9 @@ COPY build.gradle settings.gradle ./
 COPY gradle ./gradle
 COPY gradlew ./
 
+# Grant execute permission to gradlew
+RUN chmod +x ./gradlew
+
 # Copy source code
 COPY src ./src
 
