@@ -44,15 +44,11 @@ public class AuthController {
      */
     @PostMapping("/signup")
     public ResponseEntity<LoginResponse> signup(@Valid @RequestBody SignupRequest request) {
-        TokenPairDto tokenPair = authService.signup(request);
+        Long userId = authService.signup(request);
 
-        // Refresh Token을 HttpOnly 쿠키로 설정
-        ResponseCookie refreshTokenCookie = CookieUtils.createRefreshTokenCookie(tokenPair.getRefreshToken());
-
+        // userId만 반환 (토큰은 이메일 인증 후 로그인 시 발급)
         return ResponseEntity.ok()
-                .header(HttpHeaders.AUTHORIZATION, "Bearer " + tokenPair.getAccessToken())
-                .header(HttpHeaders.SET_COOKIE, refreshTokenCookie.toString())
-                .body(new LoginResponse(tokenPair.getUserId()));
+                .body(new LoginResponse(userId));
     }
 
     /**
@@ -78,13 +74,20 @@ public class AuthController {
     }
 
     /**
-     * 이메일 인증 코드 검증
+     * 이메일 인증 코드 검증 (인증 성공 시 자동 로그인)
      * POST /v1/auth/verify-email
      */
     @PostMapping("/verify-email")
-    public ResponseEntity<MessageResponse> verifyEmail(@Valid @RequestBody VerifyEmailRequest request) {
-        authService.verifyEmail(request.getEmail(), request.getCode());
-        return ResponseEntity.ok(new MessageResponse("이메일 인증이 완료되었습니다."));
+    public ResponseEntity<LoginResponse> verifyEmail(@Valid @RequestBody VerifyEmailRequest request) {
+        TokenPairDto tokenPair = authService.verifyEmail(request.getEmail(), request.getCode());
+
+        // Refresh Token 쿠키 생성
+        ResponseCookie refreshTokenCookie = CookieUtils.createRefreshTokenCookie(tokenPair.getRefreshToken());
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.SET_COOKIE, refreshTokenCookie.toString())
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + tokenPair.getAccessToken())
+                .body(new LoginResponse(tokenPair.getUserId()));
     }
 
     /**

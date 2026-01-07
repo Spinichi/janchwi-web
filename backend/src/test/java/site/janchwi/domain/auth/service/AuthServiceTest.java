@@ -59,6 +59,9 @@ class AuthServiceTest {
     @Mock
     private EmailService emailService;
 
+    @Mock
+    private LoginAttemptService loginAttemptService;
+
     @InjectMocks
     private AuthService authService;
 
@@ -115,6 +118,7 @@ class AuthServiceTest {
             given(jwtTokenProvider.createAccessToken(1L)).willReturn("accessToken");
             given(jwtTokenProvider.createRefreshToken(1L)).willReturn("refreshToken");
             given(refreshTokenRepository.findByUser(testUser)).willReturn(Optional.empty());
+            doNothing().when(loginAttemptService).onLoginSuccess(1L);
 
             // when
             TokenPairDto result = authService.login(loginRequest);
@@ -125,10 +129,8 @@ class AuthServiceTest {
             assertThat(result.getAccessToken()).isEqualTo("accessToken");
             assertThat(result.getRefreshToken()).isEqualTo("refreshToken");
 
-            // onLoginSuccess 호출 검증
-            assertThat(testUser.getFailedLoginAttempts()).isEqualTo(0);
-            assertThat(testUser.getLastLoginAt()).isNotNull();
-            assertThat(testUser.getAccountLockedUntil()).isNull();
+            // LoginAttemptService.onLoginSuccess 호출 검증
+            verify(loginAttemptService).onLoginSuccess(1L);
 
             // RefreshToken 저장 검증
             verify(refreshTokenRepository).save(any(RefreshToken.class));
@@ -158,6 +160,7 @@ class AuthServiceTest {
             // given
             given(userRepository.findByEmail("test@example.com")).willReturn(Optional.of(testUser));
             given(passwordEncoder.matches("password123", "encodedPassword")).willReturn(false);
+            doNothing().when(loginAttemptService).onLoginFailure(1L);
 
             // when & then
             assertThatThrownBy(() -> authService.login(loginRequest))
@@ -168,8 +171,8 @@ class AuthServiceTest {
                         assertThat(rse.getReason()).contains("이메일 또는 비밀번호가 일치하지 않습니다");
                     });
 
-            // 실패 횟수 증가 확인
-            assertThat(testUser.getFailedLoginAttempts()).isEqualTo(1);
+            // LoginAttemptService.onLoginFailure 호출 검증
+            verify(loginAttemptService).onLoginFailure(1L);
 
             verify(jwtTokenProvider, never()).createAccessToken(anyLong());
         }
@@ -188,14 +191,25 @@ class AuthServiceTest {
                     .failedLoginAttempts(0)
                     .build();
 
+            // id 설정
+            try {
+                java.lang.reflect.Field idField = User.class.getDeclaredField("id");
+                idField.setAccessible(true);
+                idField.set(unverifiedUser, 1L);
+            } catch (Exception e) {
+                throw new RuntimeException("Failed to set user id", e);
+            }
+
             given(userRepository.findByEmail("test@example.com")).willReturn(Optional.of(unverifiedUser));
+            given(passwordEncoder.matches("password123", "encodedPassword")).willReturn(true); // 비밀번호는 맞음
 
             // when & then
             assertThatThrownBy(() -> authService.login(loginRequest))
                     .isInstanceOf(EmailNotVerifiedException.class)
                     .hasMessageContaining("이메일 인증이 필요합니다");
 
-            verify(passwordEncoder, never()).matches(anyString(), anyString());
+            // 비밀번호는 검증되어야 함
+            verify(passwordEncoder).matches("password123", "encodedPassword");
         }
 
         @Test
@@ -215,6 +229,52 @@ class AuthServiceTest {
         }
 
         @Test
+        @DisplayName("계정 잠금 만료 후 실패 횟수 자동 초기화")
+        void login_AccountLockExpired_ResetFailedAttempts() {
+            // given - 계정 잠금이 만료된 상태 (accountLockedUntil은 과거)
+            User lockedUser = User.builder()
+                    .email("test@example.com")
+                    .password("encodedPassword")
+                    .nickname("testuser")
+                    .birthDate(LocalDate.of(2000, 1, 1))
+                    .isEmailVerified(true)
+                    .isActive(true)
+                    .failedLoginAttempts(5) // 5번 실패했었음
+                    .build();
+
+            // id 설정
+            try {
+                java.lang.reflect.Field idField = User.class.getDeclaredField("id");
+                idField.setAccessible(true);
+                idField.set(lockedUser, 1L);
+
+                // accountLockedUntil을 과거로 설정 (이미 만료됨)
+                java.lang.reflect.Field lockField = User.class.getDeclaredField("accountLockedUntil");
+                lockField.setAccessible(true);
+                lockField.set(lockedUser, Instant.now().minusSeconds(60)); // 1분 전에 만료
+            } catch (Exception e) {
+                throw new RuntimeException("Failed to set user fields", e);
+            }
+
+            given(userRepository.findByEmail("test@example.com")).willReturn(Optional.of(lockedUser));
+            given(passwordEncoder.matches("password123", "encodedPassword")).willReturn(true);
+            given(jwtTokenProvider.createAccessToken(1L)).willReturn("accessToken");
+            given(jwtTokenProvider.createRefreshToken(1L)).willReturn("refreshToken");
+            given(refreshTokenRepository.findByUser(lockedUser)).willReturn(Optional.empty());
+            doNothing().when(loginAttemptService).onLoginSuccess(1L);
+
+            // when
+            TokenPairDto result = authService.login(loginRequest);
+
+            // then
+            assertThat(result).isNotNull();
+            assertThat(result.getAccessToken()).isEqualTo("accessToken");
+
+            // 잠금 만료로 인한 초기화 + 로그인 성공 초기화 = 총 2번 호출
+            verify(loginAttemptService, times(2)).onLoginSuccess(1L);
+        }
+
+        @Test
         @DisplayName("로그인 실패 - 5회 실패 시 계정 자동 잠금")
         void login_Fail_AccountAutoLock_After5Attempts() {
             // given
@@ -228,18 +288,25 @@ class AuthServiceTest {
                     .failedLoginAttempts(4) // 이미 4번 실패
                     .build();
 
+            // id 설정
+            try {
+                java.lang.reflect.Field idField = User.class.getDeclaredField("id");
+                idField.setAccessible(true);
+                idField.set(user, 1L);
+            } catch (Exception e) {
+                throw new RuntimeException("Failed to set user id", e);
+            }
+
             given(userRepository.findByEmail("test@example.com")).willReturn(Optional.of(user));
             given(passwordEncoder.matches("password123", "encodedPassword")).willReturn(false);
+            doNothing().when(loginAttemptService).onLoginFailure(1L);
 
             // when & then
             assertThatThrownBy(() -> authService.login(loginRequest))
                     .isInstanceOf(ResponseStatusException.class);
 
-            // 5회 실패 확인
-            assertThat(user.getFailedLoginAttempts()).isEqualTo(Constants.MAX_LOGIN_ATTEMPTS);
-            // 계정 잠금 확인
-            assertThat(user.isAccountLocked()).isTrue();
-            assertThat(user.getAccountLockedUntil()).isNotNull();
+            // LoginAttemptService.onLoginFailure 호출 검증 (5번째 실패)
+            verify(loginAttemptService).onLoginFailure(1L);
         }
 
         @Test
@@ -280,8 +347,6 @@ class AuthServiceTest {
             given(userRepository.existsByEmail("new@example.com")).willReturn(false);
             given(userRepository.existsByNickname("newuser")).willReturn(false);
             given(passwordEncoder.encode(anyString())).willReturn("encodedPassword");
-            given(jwtTokenProvider.createAccessToken(anyLong())).willReturn("accessToken");
-            given(jwtTokenProvider.createRefreshToken(anyLong())).willReturn("refreshToken");
 
             User savedUser = User.builder()
                     .email("new@example.com")
@@ -302,16 +367,13 @@ class AuthServiceTest {
             }
 
             given(userRepository.save(any(User.class))).willReturn(savedUser);
-            given(refreshTokenRepository.findByUser(any())).willReturn(Optional.empty());
 
             // when
-            TokenPairDto result = authService.signup(signupRequest);
+            Long userId = authService.signup(signupRequest);
 
             // then
-            assertThat(result).isNotNull();
-            assertThat(result.getUserId()).isEqualTo(1L);
-            assertThat(result.getAccessToken()).isEqualTo("accessToken");
-            assertThat(result.getRefreshToken()).isEqualTo("refreshToken");
+            assertThat(userId).isNotNull();
+            assertThat(userId).isEqualTo(1L);
 
             // User 저장 검증
             ArgumentCaptor<User> userCaptor = ArgumentCaptor.forClass(User.class);
@@ -322,8 +384,13 @@ class AuthServiceTest {
             assertThat(capturedUser.getNickname()).isEqualTo("newuser");
             assertThat(capturedUser.getPassword()).isEqualTo("encodedPassword");
 
-            // RefreshToken 저장 검증
-            verify(refreshTokenRepository).save(any(RefreshToken.class));
+            // 이메일 인증 코드는 회원가입 시 발송하지 않음 (로그인 시도 시 안내)
+            verify(emailService, never()).sendVerificationEmail(anyString(), anyString());
+
+            // 토큰은 생성되지 않음
+            verify(jwtTokenProvider, never()).createAccessToken(anyLong());
+            verify(jwtTokenProvider, never()).createRefreshToken(anyLong());
+            verify(refreshTokenRepository, never()).save(any(RefreshToken.class));
         }
 
         @Test
@@ -459,7 +526,12 @@ class AuthServiceTest {
             // given
             String verificationCode = "123456";
             User unverifiedUser = User.builder()
+                    .id(1L)
                     .email("test@example.com")
+                    .password("encodedPassword")
+                    .nickname("testuser")
+                    .birthDate(LocalDate.of(2000, 1, 1))
+                    .gender(Gender.MALE)
                     .isEmailVerified(false)
                     .build();
 
@@ -471,14 +543,21 @@ class AuthServiceTest {
             );
 
             given(userRepository.findByEmail("test@example.com")).willReturn(Optional.of(unverifiedUser));
+            given(jwtTokenProvider.createAccessToken(1L)).willReturn("mock-access-token");
+            given(jwtTokenProvider.createRefreshToken(1L)).willReturn("mock-refresh-token");
+            given(refreshTokenRepository.findByUser(any(User.class))).willReturn(Optional.empty());
 
             // when
-            authService.verifyEmail("test@example.com", verificationCode);
+            TokenPairDto result = authService.verifyEmail("test@example.com", verificationCode);
 
             // then
             assertThat(unverifiedUser.isEmailVerified()).isTrue();
             assertThat(unverifiedUser.getEmailVerificationCodeHash()).isNull();
             assertThat(unverifiedUser.getVerificationAttempts()).isEqualTo(0);
+            assertThat(result.getUserId()).isEqualTo(1L);
+            assertThat(result.getAccessToken()).isEqualTo("mock-access-token");
+            assertThat(result.getRefreshToken()).isEqualTo("mock-refresh-token");
+            verify(refreshTokenRepository).save(any(RefreshToken.class));
         }
 
         @Test

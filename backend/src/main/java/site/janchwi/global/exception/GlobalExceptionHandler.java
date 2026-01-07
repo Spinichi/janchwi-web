@@ -69,7 +69,8 @@ public class GlobalExceptionHandler {
 
         ErrorResponse errorResponse = new ErrorResponse(
                 ex.getMessage(),
-                HttpStatus.FORBIDDEN.value()
+                HttpStatus.FORBIDDEN.value(),
+                "ACCOUNT_LOCKED"
         );
 
         return ResponseEntity
@@ -86,7 +87,8 @@ public class GlobalExceptionHandler {
 
         ErrorResponse errorResponse = new ErrorResponse(
                 ex.getMessage(),
-                HttpStatus.FORBIDDEN.value()
+                HttpStatus.FORBIDDEN.value(),
+                "EMAIL_NOT_VERIFIED"
         );
 
         return ResponseEntity

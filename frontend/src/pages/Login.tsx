@@ -1,17 +1,64 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useMutation } from '@tanstack/react-query';
+import { login } from '../shared/api/authApi';
+import { useAuthStore } from '../stores/authStore';
 import { useAlert } from '../shared/hooks/useAlert';
+import { getErrorMessage, isAccountLockedException, isEmailNotVerifiedException } from '../shared/utils/errorHandler';
+import type { User } from '../shared/types/auth.types';
 
 export const Login = () => {
   const navigate = useNavigate();
   const { showAlert, AlertComponent } = useAlert();
+  const authStore = useAuthStore();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
+  // 로그인 mutation
+  const loginMutation = useMutation({
+    mutationFn: login,
+    onSuccess: ({ response, accessToken }) => {
+      // TODO: 사용자 정보 조회 후 store에 저장
+      // 현재는 userId만 있으므로 임시 User 객체 생성
+      const tempUser: User = {
+        id: response.userId,
+        email,
+        nickname: '',
+        birthDate: '',
+        gender: 'other' as const,
+        isEmailVerified: true,
+        isActive: true,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+
+      authStore.login(tempUser, accessToken);
+      navigate('/home');
+    },
+    onError: async (error) => {
+      // 계정 잠김 확인
+      if (await isAccountLockedException(error)) {
+        showAlert('과도한 접속 시도로 계정이 일시적으로 잠겼습니다.\n잠시 후 다시 시도해주세요.');
+        return;
+      }
+
+      // 이메일 미인증 확인
+      if (await isEmailNotVerifiedException(error)) {
+        showAlert('이메일 인증이 필요합니다.\n인증 페이지로 이동합니다.', () => {
+          navigate('/email-verification', { state: { email } });
+        });
+        return;
+      }
+
+      // 기타 에러
+      const message = await getErrorMessage(error);
+      showAlert(message);
+    },
+  });
+
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    // TODO: API 연동
-    console.log('Login attempt:', { email, password });
+    loginMutation.mutate({ email, password });
   };
 
   const handleOAuthLogin = () => {
@@ -124,6 +171,7 @@ export const Login = () => {
                 required
                 style={{
                   width: '100%',
+                  boxSizing: 'border-box',
                   padding: '0.875rem 1rem',
                   borderRadius: '0.75rem',
                   border: '1px solid rgba(180, 160, 134, 0.3)',
@@ -165,6 +213,7 @@ export const Login = () => {
                 required
                 style={{
                   width: '100%',
+                  boxSizing: 'border-box',
                   padding: '0.875rem 1rem',
                   borderRadius: '0.75rem',
                   border: '1px solid rgba(180, 160, 134, 0.3)',
@@ -189,30 +238,36 @@ export const Login = () => {
             {/* Login Button */}
             <button
               type="submit"
+              disabled={loginMutation.isPending}
               style={{
                 width: '100%',
                 padding: '1rem',
                 borderRadius: '0.75rem',
                 border: '1px solid rgba(180, 160, 134, 0.5)',
-                background: 'rgba(180, 160, 134, 0.3)',
+                background: loginMutation.isPending ? 'rgba(180, 160, 134, 0.2)' : 'rgba(180, 160, 134, 0.3)',
                 backdropFilter: 'blur(10px)',
                 color: '#E8DCC0',
                 fontSize: '1rem',
                 fontWeight: '600',
-                cursor: 'pointer',
+                cursor: loginMutation.isPending ? 'not-allowed' : 'pointer',
                 transition: 'all 0.3s',
-                fontFamily: "'Noto Serif KR', serif"
+                fontFamily: "'Noto Serif KR', serif",
+                opacity: loginMutation.isPending ? 0.6 : 1,
               }}
               onMouseEnter={(e) => {
-                e.currentTarget.style.background = 'rgba(180, 160, 134, 0.5)';
-                e.currentTarget.style.borderColor = 'rgba(180, 160, 134, 0.8)';
+                if (!loginMutation.isPending) {
+                  e.currentTarget.style.background = 'rgba(180, 160, 134, 0.5)';
+                  e.currentTarget.style.borderColor = 'rgba(180, 160, 134, 0.8)';
+                }
               }}
               onMouseLeave={(e) => {
-                e.currentTarget.style.background = 'rgba(180, 160, 134, 0.3)';
-                e.currentTarget.style.borderColor = 'rgba(180, 160, 134, 0.5)';
+                if (!loginMutation.isPending) {
+                  e.currentTarget.style.background = 'rgba(180, 160, 134, 0.3)';
+                  e.currentTarget.style.borderColor = 'rgba(180, 160, 134, 0.5)';
+                }
               }}
             >
-              로그인
+              {loginMutation.isPending ? '로그인 중...' : '로그인'}
             </button>
           </form>
 

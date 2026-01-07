@@ -14,6 +14,7 @@ public class ErrorResponse {
     private boolean success;
     private String message;
     private int status;
+    private String code; // 에러 코드 (예: EMAIL_NOT_VERIFIED, ACCOUNT_LOCKED)
     private Instant timestamp;
     private List<FieldError> errors;
 
@@ -21,6 +22,16 @@ public class ErrorResponse {
         this.success = false;
         this.message = message;
         this.status = status;
+        this.code = null;
+        this.timestamp = Instant.now();
+        this.errors = null;
+    }
+
+    public ErrorResponse(String message, int status, String code) {
+        this.success = false;
+        this.message = message;
+        this.status = status;
+        this.code = code;
         this.timestamp = Instant.now();
         this.errors = null;
     }
@@ -29,6 +40,7 @@ public class ErrorResponse {
         this.success = false;
         this.message = message;
         this.status = status;
+        this.code = null;
         this.timestamp = Instant.now();
         this.errors = errors;
     }

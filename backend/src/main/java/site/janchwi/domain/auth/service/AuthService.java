@@ -40,6 +40,7 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtTokenProvider;
     private final EmailService emailService;
+    private final LoginAttemptService loginAttemptService;
 
     /**
      * 로그인
@@ -66,6 +67,12 @@ public class AuthService {
             );
         }
 
+        // 계정 잠금이 만료되었으면 실패 횟수 초기화
+        if (user.getAccountLockedUntil() != null && !user.isAccountLocked()) {
+            log.info("계정 잠금 만료 - 실패 횟수 초기화: userId={}", user.getId());
+            loginAttemptService.onLoginSuccess(user.getId());
+        }
+
         // 계정 활성화 확인
         if (!user.isActive()) {
             log.warn("로그인 실패 - 비활성화 계정: email={}", request.getEmail());
@@ -75,24 +82,12 @@ public class AuthService {
             );
         }
 
-        // 이메일 인증 확인
-        if (!user.isEmailVerified()) {
-            log.warn("로그인 실패 - 이메일 미인증: email={}", request.getEmail());
-            throw new EmailNotVerifiedException("이메일 인증이 필요합니다. 인증 후 로그인해주세요.");
-        }
-
-        // 비밀번호 검증
+        // 비밀번호 검증 (이메일 인증 확인보다 먼저 - 보안 강화)
         if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
-            user.onLoginFailure();
+            // 별도 트랜잭션으로 실패 횟수 증가 (원자적 업데이트 + 롤백 방지)
+            loginAttemptService.onLoginFailure(user.getId());
 
-            // 실패 횟수가 최대치에 도달하면 계정 잠금
-            if (user.getFailedLoginAttempts() >= Constants.MAX_LOGIN_ATTEMPTS) {
-                user.lockAccount(Constants.ACCOUNT_LOCK_DURATION_MINUTES);
-                log.warn("계정 잠금 - 로그인 실패 횟수 초과: email={}", request.getEmail());
-            }
-
-            log.warn("로그인 실패 - 비밀번호 불일치: email={}, 실패 횟수={}",
-                    request.getEmail(), user.getFailedLoginAttempts());
+            log.warn("로그인 실패 - 비밀번호 불일치: email={}", request.getEmail());
 
             throw new ResponseStatusException(
                     HttpStatus.UNAUTHORIZED,
@@ -100,30 +95,25 @@ public class AuthService {
             );
         }
 
-        // 로그인 성공 처리
-        user.onLoginSuccess();
+        // 이메일 인증 확인 (비밀번호가 맞을 때만 확인)
+        if (!user.isEmailVerified()) {
+            log.warn("로그인 실패 - 이메일 미인증: email={}", request.getEmail());
+            throw new EmailNotVerifiedException("이메일 인증이 필요합니다. 인증 후 로그인해주세요.");
+        }
+
+        // 로그인 성공 처리 (별도 트랜잭션으로 원자적 업데이트)
+        loginAttemptService.onLoginSuccess(user.getId());
         log.info("로그인 성공: userId={}, email={}", user.getId(), request.getEmail());
 
-        // 토큰 생성
-        String accessToken = jwtTokenProvider.createAccessToken(user.getId());
-        String refreshToken = jwtTokenProvider.createRefreshToken(user.getId());
-
-        // Refresh Token 해시화 및 저장
-        String refreshTokenHash = hashToken(refreshToken);
-        saveOrUpdateRefreshToken(user, refreshTokenHash);
-
-        return TokenPairDto.builder()
-                .userId(user.getId())
-                .accessToken(accessToken)
-                .refreshToken(refreshToken)
-                .build();
+        // 토큰 생성 및 반환
+        return generateTokenPair(user);
     }
 
     /**
      * 회원가입
      */
     @Transactional
-    public TokenPairDto signup(SignupRequest request) {
+    public Long signup(SignupRequest request) {
         log.info("회원가입 시도: email={}, nickname={}", request.getEmail(), request.getNickname());
 
         // 이메일 중복 체크
@@ -171,22 +161,8 @@ public class AuthService {
         User savedUser = userRepository.save(user);
         log.info("회원가입 성공: userId={}, email={}", savedUser.getId(), request.getEmail());
 
-        // 이메일 인증 코드 발송
-        sendVerificationCode(savedUser.getEmail());
-
-        // 토큰 생성 및 반환
-        String accessToken = jwtTokenProvider.createAccessToken(savedUser.getId());
-        String refreshToken = jwtTokenProvider.createRefreshToken(savedUser.getId());
-
-        // Refresh Token 해시화 및 저장
-        String refreshTokenHash = hashToken(refreshToken);
-        saveOrUpdateRefreshToken(savedUser, refreshTokenHash);
-
-        return TokenPairDto.builder()
-                .userId(savedUser.getId())
-                .accessToken(accessToken)
-                .refreshToken(refreshToken)
-                .build();
+        // userId만 반환 (이메일 인증은 로그인 시도 시 안내, 이메일 인증 페이지에서 발송)
+        return savedUser.getId();
     }
 
     /**
@@ -236,10 +212,10 @@ public class AuthService {
     }
 
     /**
-     * 이메일 인증 코드 검증
+     * 이메일 인증 코드 검증 (인증 성공 시 자동 로그인 - 토큰 발급)
      */
     @Transactional
-    public void verifyEmail(String email, String code) {
+    public TokenPairDto verifyEmail(String email, String code) {
         log.info("이메일 인증 시도: email={}", email);
 
         // 사용자 조회
@@ -304,6 +280,9 @@ public class AuthService {
         // 인증 완료
         user.verifyEmail();
         log.info("이메일 인증 성공: email={}", email);
+
+        // 자동 로그인: Access Token 및 Refresh Token 생성
+        return generateTokenPair(user);
     }
 
     /**
@@ -364,6 +343,25 @@ public class AuthService {
 
         refreshTokenRepository.deleteByUser(user);
         log.info("로그아웃 성공: userId={}", userId);
+    }
+
+    /**
+     * Access Token 및 Refresh Token 생성
+     */
+    private TokenPairDto generateTokenPair(User user) {
+        // 토큰 생성
+        String accessToken = jwtTokenProvider.createAccessToken(user.getId());
+        String refreshToken = jwtTokenProvider.createRefreshToken(user.getId());
+
+        // Refresh Token 해시화 및 저장
+        String refreshTokenHash = hashToken(refreshToken);
+        saveOrUpdateRefreshToken(user, refreshTokenHash);
+
+        return TokenPairDto.builder()
+                .userId(user.getId())
+                .accessToken(accessToken)
+                .refreshToken(refreshToken)
+                .build();
     }
 
     /**

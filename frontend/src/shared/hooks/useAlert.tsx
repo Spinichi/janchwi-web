@@ -5,24 +5,31 @@ export const useAlert = () => {
   const [alertState, setAlertState] = useState<{
     isOpen: boolean;
     message: string;
+    onConfirm?: () => void;
   }>({
     isOpen: false,
-    message: ''
+    message: '',
+    onConfirm: undefined
   });
 
-  const showAlert = useCallback((message: string) => {
+  const showAlert = useCallback((message: string, onConfirm?: () => void) => {
     setAlertState({
       isOpen: true,
-      message
+      message,
+      onConfirm
     });
   }, []);
 
   const closeAlert = useCallback(() => {
+    if (alertState.onConfirm) {
+      alertState.onConfirm();
+    }
     setAlertState({
       isOpen: false,
-      message: ''
+      message: '',
+      onConfirm: undefined
     });
-  }, []);
+  }, [alertState.onConfirm]);
 
   const AlertComponent = alertState.isOpen ? (
     <Alert message={alertState.message} onClose={closeAlert} />

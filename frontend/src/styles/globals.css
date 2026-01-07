@@ -2,6 +2,19 @@
 @tailwind components;
 @tailwind utilities;
 
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body, #root {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+}
+
 :root {
   /* Wine bar theme with warm amber accents and deep charcoal backgrounds */
   --background: 0.12 0.01 285;
@@ -20,6 +33,8 @@
     position: relative;
     overflow-x: hidden;
     font-family: 'Noto Serif KR', serif;
+    min-width: 320px;
+    min-height: 100vh;
   }
 
   /* Wine bar interior background */

@@ -1,5 +1,6 @@
 package site.janchwi.domain.users.entity;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonValue;
 
 public enum Gender {
@@ -19,11 +20,12 @@ public enum Gender {
     }
 
     /**
-     * String 값으로 Gender enum 찾기
+     * String 값으로 Gender enum 찾기 (역직렬화용)
      * @param value "male", "female", "other"
      * @return Gender enum
      * @throws IllegalArgumentException 잘못된 값인 경우
      */
+    @JsonCreator
     public static Gender fromValue(String value) {
         if (value == null) {
             return null;

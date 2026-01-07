@@ -1,7 +1,10 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useMutation } from '@tanstack/react-query';
+import { signup } from '../shared/api/authApi';
 import { DatePicker } from '../shared/components/DatePicker';
 import { useAlert } from '../shared/hooks/useAlert';
+import { getErrorMessage } from '../shared/utils/errorHandler';
 
 export const Signup = () => {
   const navigate = useNavigate();
@@ -17,11 +20,51 @@ export const Signup = () => {
   // 선택 필드
   const [profileImage, setProfileImage] = useState<File | null>(null);
   const [gender, setGender] = useState<'male' | 'female' | 'other' | ''>('');
-  const [preferredAlcohol, setPreferredAlcohol] = useState<string[]>([]);
   const [bio, setBio] = useState('');
+
+  // 회원가입 mutation
+  const signupMutation = useMutation({
+    mutationFn: signup,
+    onSuccess: () => {
+      showAlert('회원가입이 완료되었습니다.\n로그인 페이지로 이동합니다.', () => {
+        navigate('/login');
+      });
+    },
+    onError: async (error) => {
+      const message = await getErrorMessage(error);
+      showAlert(message);
+    },
+  });
 
   const handleSignup = (e: React.FormEvent) => {
     e.preventDefault();
+
+    const form = e.currentTarget as HTMLFormElement;
+
+    // HTML5 기본 검증 확인
+    if (!form.checkValidity()) {
+      const firstInvalid = form.querySelector(':invalid') as HTMLInputElement;
+      if (firstInvalid) {
+        // label을 찾기 위해 부모 div에서 label 요소 찾기
+        const parentDiv = firstInvalid.closest('div');
+        const labelElement = parentDiv?.querySelector('label');
+        const fieldName = labelElement?.textContent?.replace(' *', '') || '입력 항목';
+
+        const minLength = firstInvalid.minLength;
+        const maxLength = firstInvalid.maxLength;
+        const currentLength = firstInvalid.value.length;
+
+        let message = `${fieldName}을 확인해주세요.`;
+
+        // 길이 제한이 있는 경우
+        if (minLength > 0 || maxLength > 0) {
+          message += `\n(현재 ${currentLength}자를 사용하고 있습니다)`;
+        }
+
+        showAlert(message);
+      }
+      return;
+    }
 
     // 닉네임 유효성 검사 (2~10자)
     if (nickname.length < 2 || nickname.length > 10) {
@@ -62,16 +105,15 @@ export const Signup = () => {
       return;
     }
 
-    // TODO: API 연동 (이메일 인증 포함)
-    console.log('Signup attempt:', {
+    // API 호출
+    signupMutation.mutate({
       email,
       password,
       nickname,
       birthDate,
-      profileImage,
-      gender,
-      preferredAlcohol,
-      bio
+      profileImageUrl: undefined, // TODO: 이미지 업로드 구현 후 URL 추가
+      gender: gender || 'other', // "male", "female", "other" (소문자)
+      bio: bio || undefined,
     });
   };
 
@@ -81,19 +123,9 @@ export const Signup = () => {
     }
   };
 
-  const toggleAlcoholPreference = (type: string) => {
-    setPreferredAlcohol(prev =>
-      prev.includes(type)
-        ? prev.filter(t => t !== type)
-        : [...prev, type]
-    );
-  };
-
   const handleOAuthSignup = () => {
     showAlert('소셜 로그인 기능은 추후 구현 예정입니다.');
   };
-
-  const alcoholTypes = ['와인', '위스키', '칵테일', '맥주', '소주', '막걸리', '사케'];
 
   const inputStyle = {
     width: '100%',
@@ -215,7 +247,7 @@ export const Signup = () => {
             필수 정보
           </h2>
 
-          <form onSubmit={handleSignup}>
+          <form onSubmit={handleSignup} noValidate>
             {/* Email Input */}
             <div style={{ marginBottom: '1.25rem' }}>
               <label style={labelStyle}>이메일 *</label>
@@ -344,6 +376,16 @@ export const Signup = () => {
                   e.target.style.background = 'rgba(15, 15, 20, 0.6)';
                 }}
               />
+              {confirmPassword && (
+                <p style={{
+                  fontSize: '0.75rem',
+                  color: password === confirmPassword ? '#6FBA82' : '#E57373',
+                  marginTop: '0.375rem',
+                  fontFamily: "'Noto Serif KR', serif"
+                }}>
+                  {password === confirmPassword ? '✓ 비밀번호가 일치합니다' : '✗ 비밀번호가 일치하지 않습니다'}
+                </p>
+              )}
             </div>
 
             {/* Divider */}
@@ -466,37 +508,6 @@ export const Signup = () => {
               </div>
             </div>
 
-            {/* Preferred Alcohol Types */}
-            <div style={{ marginBottom: '1.25rem' }}>
-              <label style={labelStyle}>선호하는 술 종류</label>
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(3, 1fr)',
-                gap: '0.5rem'
-              }}>
-                {alcoholTypes.map((type) => (
-                  <button
-                    key={type}
-                    type="button"
-                    onClick={() => toggleAlcoholPreference(type)}
-                    style={{
-                      padding: '0.625rem',
-                      borderRadius: '0.5rem',
-                      border: `1px solid ${preferredAlcohol.includes(type) ? 'rgba(180, 160, 134, 0.8)' : 'rgba(180, 160, 134, 0.3)'}`,
-                      background: preferredAlcohol.includes(type) ? 'rgba(180, 160, 134, 0.3)' : 'rgba(15, 15, 20, 0.6)',
-                      color: '#E8DCC0',
-                      fontSize: '0.8125rem',
-                      fontFamily: "'Noto Serif KR', serif",
-                      cursor: 'pointer',
-                      transition: 'all 0.3s'
-                    }}
-                  >
-                    {type}
-                  </button>
-                ))}
-              </div>
-            </div>
-
             {/* Bio */}
             <div style={{ marginBottom: '2rem' }}>
               <label style={labelStyle}>자기소개 (최대 50자)</label>
@@ -538,30 +549,36 @@ export const Signup = () => {
             {/* Signup Button */}
             <button
               type="submit"
+              disabled={signupMutation.isPending}
               style={{
                 width: '100%',
                 padding: '1rem',
                 borderRadius: '0.75rem',
                 border: '1px solid rgba(180, 160, 134, 0.5)',
-                background: 'rgba(180, 160, 134, 0.3)',
+                background: signupMutation.isPending ? 'rgba(180, 160, 134, 0.2)' : 'rgba(180, 160, 134, 0.3)',
                 backdropFilter: 'blur(10px)',
                 color: '#E8DCC0',
                 fontSize: '1rem',
                 fontWeight: '600',
-                cursor: 'pointer',
+                cursor: signupMutation.isPending ? 'not-allowed' : 'pointer',
                 transition: 'all 0.3s',
-                fontFamily: "'Noto Serif KR', serif"
+                fontFamily: "'Noto Serif KR', serif",
+                opacity: signupMutation.isPending ? 0.6 : 1,
               }}
               onMouseEnter={(e) => {
-                e.currentTarget.style.background = 'rgba(180, 160, 134, 0.5)';
-                e.currentTarget.style.borderColor = 'rgba(180, 160, 134, 0.8)';
+                if (!signupMutation.isPending) {
+                  e.currentTarget.style.background = 'rgba(180, 160, 134, 0.5)';
+                  e.currentTarget.style.borderColor = 'rgba(180, 160, 134, 0.8)';
+                }
               }}
               onMouseLeave={(e) => {
-                e.currentTarget.style.background = 'rgba(180, 160, 134, 0.3)';
-                e.currentTarget.style.borderColor = 'rgba(180, 160, 134, 0.5)';
+                if (!signupMutation.isPending) {
+                  e.currentTarget.style.background = 'rgba(180, 160, 134, 0.3)';
+                  e.currentTarget.style.borderColor = 'rgba(180, 160, 134, 0.5)';
+                }
               }}
             >
-              회원가입
+              {signupMutation.isPending ? '가입 중...' : '회원가입'}
             </button>
           </form>
 
