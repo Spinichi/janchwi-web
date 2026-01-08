@@ -339,7 +339,7 @@ fix: bug
 
 ## 🚀 개발 현황 및 계획
 
-### ✅ 완료된 작업 (2025-12-31 기준)
+### ✅ 완료된 작업 (2026-01-08 기준)
 
 #### Backend
 - [x] JWT 인증/인가 시스템 구현 완료
@@ -348,6 +348,11 @@ fix: bug
 - [x] Swagger UI 통합
 - [x] 타입 안정성 강화 (Long ID, Gender Enum, boolean primitives)
 - [x] PostgreSQL 연동 및 엔티티 설계
+- [x] **GitHub Actions CI/CD 파이프라인 구축**
+- [x] **Docker 컨테이너화 (Multi-stage Build)**
+- [x] **TestContainers 통합 테스트 환경**
+- [x] **EC2 자동 배포 (Docker Hub + SSH)**
+- [x] **Nginx 리버스 프록시 설정**
 
 #### Frontend
 - [x] 온보딩 페이지
@@ -355,49 +360,60 @@ fix: bug
 - [x] 헤더 네비게이션
 - [x] 회원가입 페이지
 - [x] 로그인 페이지
-- [x] 커스텀 라우터
+- [x] React Router v6 마이그레이션
 - [x] 다크 와인바 테마
+- [x] **이메일 인증 페이지 (6자리 코드)**
+- [x] **Axios API 클라이언트 (토큰 자동 갱신)**
+- [x] **Zustand 전역 상태 관리**
+- [x] **Vercel 배포 (자동 빌드/배포)**
+- [x] **CORS 설정 완료**
+
+#### Infra
+- [x] **Docker Compose (PostgreSQL)**
+- [x] **Nginx 설정 (api.janchwi.site → Backend)**
+- [x] **Let's Encrypt SSL/TLS**
+- [x] **GitHub Secrets 환경변수 관리**
+- [x] **Vercel 환경변수 설정**
 
 #### Shared
 - [x] Auth/User 타입 정의 동기화
 
 ### 🔴 긴급 (다음 단계)
 
-#### Frontend
-- [ ] 회원가입/로그인/이메일 인증 API 연동
-- [ ] Axios 인스턴스 설정
-- [ ] JWT 토큰 관리 (자동 갱신)
-- [ ] 이메일 미인증 사용자 안내 페이지
-
-#### Infra
-- [ ] Gmail SMTP 설정 및 이메일 발송 테스트
-
-### 🟡 중요 (곧 해야 할 것)
-
-#### Frontend
-- [ ] 로딩 상태 관리
-- [ ] 에러 핸들링
-- [ ] 전역 상태 관리 (Zustand/Jotai)
-
 #### Backend
-- [ ] 술 정보 API
-- [ ] 리뷰/댓글 API
-
-#### Infra
-- [ ] Docker & Docker Compose
-- [ ] Nginx 설정
-
-### 🟢 추후 (여유 있을 때)
+- [ ] 술 정보 API 구현
+- [ ] 리뷰/댓글 API 구현
 
 #### Frontend
 - [ ] 술 상세 페이지
 - [ ] 리뷰 작성 UI
-- [ ] 커뮤니티 게시판
-- [ ] 실시간 채팅 UI
+- [ ] 커뮤니티 게시판 UI
 
 #### Infra
-- [ ] GitHub Actions CI/CD
-- [ ] AWS EC2 자동 배포
+- [ ] Redis 캐싱 도입
+- [ ] 모니터링 (Prometheus + Grafana)
+
+### 🟡 중요 (곧 해야 할 것)
+
+#### Backend
+- [ ] WebSocket 실시간 채팅
+- [ ] 이미지 업로드 (S3 연동)
+- [ ] 소셜 로그인 (Google, Kakao)
+
+#### Frontend
+- [ ] 실시간 채팅 UI
+- [ ] 프로필 수정 페이지
+- [ ] 이미지 업로드 UI
+
+### 🟢 추후 (여유 있을 때)
+
+#### Backend
+- [ ] 검색 최적화 (Elasticsearch)
+- [ ] 알림 시스템
+
+#### Frontend
+- [ ] PWA 지원
+- [ ] 다국어 지원 (i18n)
 
 ---
 

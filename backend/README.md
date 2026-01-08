@@ -321,19 +321,46 @@ http://localhost:8080/swagger-ui/index.html
 
 ---
 
+## 🚀 CI/CD & 배포 (2026-01-08 구축 완료)
+
+### GitHub Actions 파이프라인
+* **3단계 워크플로우**: build-and-test → build-and-push → deploy
+* **브랜치 전략**:
+  - `dev`: 빌드 및 테스트만 실행
+  - `main`: Docker Hub 푸시 + EC2 자동 배포
+* **파일**: `.github/workflows/backend-deploy.yml`
+
+### Docker 컨테이너화
+* **Multi-stage Build**:
+  - Build: `eclipse-temurin:25-jdk` + Gradle 9.2.1
+  - Runtime: `eclipse-temurin:25-jre-alpine`
+* **이미지 레지스트리**: Docker Hub (`spinichi/janchwi-backend`)
+* **네트워크**: `janchwi-db_janchwi_net` (PostgreSQL 컨테이너와 통신)
+
+### TestContainers 통합 테스트
+* **PostgreSQL 16** TestContainer
+* SSH 터널링 의존성 제거
+* CI/CD 환경에서 자동화된 통합 테스트
+* **파일**: `AbstractIntegrationTest.java`, `application-test.yml`
+
+### 프로덕션 환경
+* **배포 대상**: AWS EC2
+* **환경변수 관리**: GitHub Secrets
+* **Nginx 리버스 프록시**: `api.janchwi.site` → `localhost:8080`
+* **HTTPS**: Let's Encrypt SSL/TLS
+
+---
+
 ## ⏭ 향후 작업
 
-* Backend Dockerfile 작성
-* Backend 전용 docker-compose 구성
-* Nginx ↔ Backend API 연동
 * Redis 연동 (Refresh Token 저장소)
 * 비동기 이벤트 처리 구조 설계
-* Integration Test 추가
 * 소셜 로그인 (Google, Kakao)
+* 술 정보, 리뷰, 댓글 API 구현
 
 ---
 
 ## 📌 한 줄 요약
 
 > **잔취 백엔드는 PostgreSQL + JWT 기반의 Spring Boot 애플리케이션으로,
-> 인증/인가 시스템을 완성하고 26개 테스트를 통과한 프로덕션 준비 상태입니다.**
+> CI/CD 파이프라인과 함께 EC2에 자동 배포되는 프로덕션 환경을 구축했습니다.**
