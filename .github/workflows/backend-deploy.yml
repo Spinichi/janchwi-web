@@ -95,7 +95,7 @@ jobs:
             docker run -d \
               --name janchwi-backend \
               --restart unless-stopped \
-              --network janchwi_net \
+              --network janchwi-db_janchwi_net \
               -p 8080:8080 \
               -e SPRING_PROFILES_ACTIVE=prod \
               -e DB_URL=${{ secrets.DB_URL }} \
